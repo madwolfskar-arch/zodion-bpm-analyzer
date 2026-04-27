@@ -4,19 +4,18 @@ import google.generativeai as genai
 import datetime
 from fpdf import FPDF
 
-# --- CONFIGURACIÓN TÉCNICA ZODION ---
-API_KEY = "AIzaSyD9StlzJy9FXg9epKfSgrWWPz5ZMzgCmNI"
+# --- CONFIGURACIÓN ELITE ZODION (NUBE & SEGURIDAD) ---
+# Intentamos obtener la clave de los Secrets de la nube; si no, usamos la de respaldo
+if "GOOGLE_API_KEY" in st.secrets:
+    API_KEY = st.secrets["GOOGLE_API_KEY"]
+else:
+    API_KEY = "AIzaSyD9StlzJy9FXg9epKfSgrWWPz5ZMzgCmNI"
 
-# CONFIGURACIÓN ROBUSTA: Forzamos la versión estable de la API
-# Esto soluciona el error 404 en la mayoría de entornos
+# Configuración forzada para evitar el error 404 de la versión beta
 genai.configure(api_key=API_KEY)
 
-# Intentamos cargar el modelo con el nombre estándar
-try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except Exception:
-    # Respaldo en caso de que la librería sea antigua
-    model = genai.GenerativeModel('gemini-pro-vision')
+# Cargamos el modelo usando la ruta absoluta más estable
+model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 st.set_page_config(page_title="ZODION - Panel de Inspección", layout="wide", page_icon="🛡️")
 
@@ -54,6 +53,7 @@ def generar_pdf_bytes(check_datos, hallazgo, accion, analitica):
 
 # --- INTERFAZ DE USUARIO ---
 st.title("🛡️ Sistema de Gestión Ambiental Zodion")
+st.write(f"Soporte Técnico Especializado | Hoy es: {datetime.date.today()}")
 
 checklist = {}
 with st.sidebar:
@@ -64,7 +64,10 @@ with st.sidebar:
     checklist[f"Temperatura Controlada ({t}°C)"] = st.checkbox("Dentro de rango (0-4°C)")
 
 col1, col2 = st.columns(2)
-analisis_resultado = "Esperando análisis técnico..."
+
+# Inicializamos el estado del análisis para que sea persistente
+if 'analisis_resultado' not in st.session_state:
+    st.session_state.analisis_resultado = "Esperando análisis técnico..."
 
 with col1:
     foto = st.file_uploader("Subir evidencia (Etiqueta/Equipo)", type=["jpg", "png", "jpeg"])
@@ -77,22 +80,20 @@ with col2:
             with st.spinner("Analizando bajo estándares Zodion..."):
                 try:
                     img = Image.open(foto)
-                    # Prompt optimizado para evitar errores de versión
-                    prompt = f"Hoy es {datetime.date.today()}. Identifica producto, marca y fecha de vencimiento. Indica si es apto."
+                    # Forzamos la detección con un prompt directo
+                    prompt = f"Analiza esta imagen de inspección BPM. Identifica producto, marca y fecha de vencimiento. Hoy es {datetime.date.today()}. Determina si es apto según la fecha actual."
                     response = model.generate_content([prompt, img])
-                    analisis_resultado = response.text
-                    st.info(analisis_resultado)
+                    st.session_state.analisis_resultado = response.text
                 except Exception as e:
-                    st.error(f"Error en el motor: {e}")
+                    st.error(f"Nota técnica Zodion: No se pudo conectar con el motor. Error: {e}")
+
+    st.info(st.session_state.analisis_resultado)
 
 st.divider()
 h_txt = st.text_area("Hallazgo (Sección 12)")
 a_txt = st.text_area("Acción Correctiva")
 
 if st.button("📄 FINALIZAR Y GENERAR REPORTE PDF"):
-    pdf_out = generar_pdf_bytes(checklist, h_txt, a_txt, analisis_resultado)
+    pdf_out = generar_pdf_bytes(checklist, h_txt, a_txt, st.session_state.analisis_resultado)
     st.download_button("⬇️ Descargar Reporte Zodion", pdf_out, f"Zodion_{datetime.date.today()}.pdf", "application/pdf")
-
-    
-
 
