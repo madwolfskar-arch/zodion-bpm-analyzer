@@ -3,35 +3,31 @@ from PIL import Image
 import google.generativeai as genai
 import datetime
 from fpdf import FPDF
+from google.generativeai.types import RequestOptions
 
-# --- CONFIGURACIÓN ELITE ZODION ---
+# --- CONFIGURACIÓN DE ALTA DISPONIBILIDAD ZODION ---
 if "GOOGLE_API_KEY" in st.secrets:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
 else:
     API_KEY = "AIzaSyD9StlzJy9FXg9epKfSgrWWPz5ZMzgCmNI"
 
-genai.configure(api_key=API_KEY)
+# FORZAMOS LA VERSIÓN V1 PARA EVITAR EL ERROR 404 DE LA BETA
+genai.configure(api_key=API_KEY, transport='grpc')
 
-# LÓGICA DE DETECCIÓN AUTOMÁTICA DE MODELO (Evita Error 404)
+# Usamos 'gemini-1.5-flash-latest' o el respaldo estable 'gemini-pro-vision'
 @st.cache_resource
-def obtener_modelo():
-    # Intentamos nombres conocidos en orden de estabilidad
-    nombres_a_probar = ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro-vision']
-    for nombre in nombres_a_probar:
+def configurar_modelo_zodion():
+    # Lista de prioridades para asegurar que el escáner funcione
+    opciones = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro-vision']
+    for opt in opciones:
         try:
-            m = genai.GenerativeModel(nombre)
-            # Prueba rápida de inicialización
+            m = genai.GenerativeModel(model_name=opt)
             return m
         except:
             continue
-    # Si nada funciona, listamos los modelos disponibles en el servidor
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            return genai.GenerativeModel(m.name)
     return None
 
-model = obtener_modelo()
-
+model = configurar_modelo_zodion()
 st.set_page_config(page_title="ZODION - Panel de Inspección", layout="wide", page_icon="🛡️")
 
 # --- LÓGICA DE REPORTES PDF ---
