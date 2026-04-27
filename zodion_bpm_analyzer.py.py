@@ -1,9 +1,15 @@
+import sys
+import os
+# Forzamos a Python a mirar en la carpeta donde el instalador dice que están las cosas
+sys.path.append(r'C:\Users\Usuario Principal\AppData\Roaming\Python\Python314\site-packages')
+
 import streamlit as st
 from PIL import Image
 from google import genai 
 import datetime
-# AQUÍ ESTÁ EL CAMBIO: agregamos el '2' en la importación
 from fpdf2 import FPDF 
+
+# ... (resto del código igual)
 
 # --- SIGUE EL RESTO DEL CÓDIGO IGUAL ---
 
@@ -106,6 +112,12 @@ with col2:
                 )
             except Exception as e:
                 st.error(f"Error al generar PDF: {e}")
+
+
+
+
+
+
 
 
 
